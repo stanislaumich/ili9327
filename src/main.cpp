@@ -17,6 +17,8 @@ TouchScreen ts = TouchScreen(XP, YP, XM, YM, 300);
 
 Adafruit_GFX_Button on_btn, off_btn, b1_btn, b2_btn, b3_btn, b4_btn, b5_btn, b6_btn;
 int c=0;
+int test=0;
+
 int pixel_x, pixel_y;     //Touch_getXY() updates global vars
 bool Touch_getXY(void)
 {
@@ -62,8 +64,8 @@ void setup(void)
     b3_btn.initButton(&tft,  60, 300, 100, 40, GREEN, WHITE, BLACK, "B3", 2);
     b4_btn.initButton(&tft, 180, 300, 100, 40, GREEN, WHITE, BLACK, "B4", 2);
 
-    b5_btn.initButton(&tft,  60, 30, 100, 40, GREEN, WHITE, BLACK, "B5", 2);
-    b6_btn.initButton(&tft, 180, 30, 100, 40, GREEN, WHITE, BLACK, "B6", 2);
+    b5_btn.initButton(&tft,  40, 30, 50, 40, WHITE, BLUE, BLACK, "-", 4);
+    b6_btn.initButton(&tft, 200, 30, 50, 40, WHITE, RED, BLACK, "+", 4);
 
     on_btn.drawButton(false);
     off_btn.drawButton(false);
@@ -157,19 +159,19 @@ void loop(void)
     }
     if (b5_btn.justPressed()) {
         b5_btn.drawButton(true);
-        tft.fillRect(40, 80, 160, 80, YELLOW);
-        c+=1;
-        tft.setTextColor(BLACK);
-        tft.setCursor(50,90);
-        tft.print("OFF");tft.print("  ");tft.print(c);
+        tft.fillRect(80, 00, 80, 40, BLACK);
+        if (test>0) {test-=1;}
+        tft.setTextColor(BLUE);
+        tft.setCursor(90,10);
+        tft.print(test);
     }
     if (b6_btn.justPressed()) {
         b6_btn.drawButton(true);
-        tft.fillRect(40, 80, 160, 80, WHITE);
-        c+=1;
-        tft.setTextColor(BLACK);
-        tft.setCursor(50,90);
-        tft.print("OFF");tft.print("  ");tft.print(c);
+        tft.fillRect(80, 0, 80, 40, BLACK);
+        test+=1;
+        tft.setTextColor(RED);
+        tft.setCursor(90,10);
+        tft.print(test);
     }
 
 
