@@ -1,40 +1,10 @@
-#if 1
-
-#include <Adafruit_GFX.h>
+#include <Arduino.h>
 #include <MCUFRIEND_kbv.h>
-MCUFRIEND_kbv tft;
-#include <TouchScreen.h>
-#define MINPRESSURE 200
-#define MAXPRESSURE 1000
-
-// ALL Touch panels and wiring is DIFFERENT
-// copy-paste results from TouchScreen_Calibr_native.ino
-const int XP = 6, XM = A2, YP = A1, YM = 7; //ID=0x9341
-
-const int TS_LEFT = 907, TS_RT = 136, TS_TOP = 942, TS_BOT = 139;
-
-TouchScreen ts = TouchScreen(XP, YP, XM, YM, 300);
-
-Adafruit_GFX_Button on_btn, off_btn, b1_btn, b2_btn, b3_btn, b4_btn, b5_btn, b6_btn;
-int c=0;
-int test=0;
-
-int pixel_x, pixel_y;     //Touch_getXY() updates global vars
-bool Touch_getXY(void)
-{
-    TSPoint p = ts.getPoint();
-    pinMode(YP, OUTPUT);      //restore shared pins
-    pinMode(XM, OUTPUT);
-    digitalWrite(YP, HIGH);   //because TFT control pins
-    digitalWrite(XM, HIGH);
-    bool pressed = (p.z > MINPRESSURE && p.z < MAXPRESSURE);
-    if (pressed) {
-        pixel_x = map(p.x, TS_LEFT, TS_RT, 0, tft.width()); //.kbv makes sense to me
-        pixel_y = map(p.y, TS_TOP, TS_BOT, 0, tft.height());
-    }
-    return pressed;
-}
-
+MCUFRIEND_kbv tft;       
+/*
+большой дисплей ID на самом деле 9327
+разрешение 240х400
+*/
 #define BLACK   0x0000
 #define BLUE    0x001F
 #define RED     0xF800
@@ -44,139 +14,200 @@ bool Touch_getXY(void)
 #define YELLOW  0xFFE0
 #define WHITE   0xFFFF
 
+#define Serial_speed=9600
+#define Orientation=0
+
+
+
+
+
+
+void setup(){
+ tft.reset();
+ int ID = tft.readID();
+ tft.begin(ID);
+ Serial.begin(Serial_speed);
+ tft.setRotation(Orientation);
+ tft.fillScreen(BLACK);
+
+}
+
+
+void loop(){
+
+
+    
+}
+
+
+
+/*
+void loop()
+{
+    uint16_t xpos, ypos;  //screen coordinates
+    tp = ts.getPoint();   //tp.x, tp.y are ADC values
+
+    // if sharing pins, you'll need to fix the directions of the touchscreen pins
+    pinMode(XM, OUTPUT);
+    pinMode(YP, OUTPUT);
+    // we have some minimum pressure we consider 'valid'
+    // pressure of 0 means no pressing!
+
+    if (tp.z > MINPRESSURE && tp.z < MAXPRESSURE) {
+        // most mcufriend have touch (with icons) that extends below the TFT
+        // screens without icons need to reserve a space for "erase"
+        // scale the ADC values from ts.getPoint() to screen values e.g. 0-239
+        //
+        // Calibration is true for PORTRAIT. tp.y is always long dimension 
+        // map to your current pixel orientation
+        switch (Orientation) {
+            case 0:
+                xpos = map(tp.x,  TS_RT,TS_LEFT, 0, tft.width());
+                ypos = map(tp.y,  TS_BOT,TS_TOP, 0, tft.height());
+                break;
+            case 1:
+                xpos = map(tp.y,  TS_BOT,TS_TOP, 0, tft.width());
+                ypos = map(tp.x,  TS_LEFT,TS_RT, 0, tft.height());
+                break;
+            case 2:
+                xpos = map(tp.x,  TS_LEFT,TS_RT, 0, tft.width());
+                ypos = map(tp.y,  TS_TOP,TS_BOT, 0, tft.height());
+                break;
+            case 3:
+                xpos = map(tp.y,  TS_TOP,TS_BOT, 0, tft.width());
+                ypos = map(tp.x,  TS_RT,TS_LEFT, 0, tft.height());
+                break;
+        }
+
+        // are we in top color box area ?
+        if (ypos < BOXSIZE) {               //draw white border on selected color box
+            oldcolor = currentcolor;
+
+            if (xpos < BOXSIZE) {
+                currentcolor = RED;
+                tft.drawRect(0, 0, BOXSIZE, BOXSIZE, WHITE);
+            } else if (xpos < BOXSIZE * 2) {
+                currentcolor = YELLOW;
+                tft.drawRect(BOXSIZE, 0, BOXSIZE, BOXSIZE, WHITE);
+            } else if (xpos < BOXSIZE * 3) {
+                currentcolor = GREEN;
+                tft.drawRect(BOXSIZE * 2, 0, BOXSIZE, BOXSIZE, WHITE);
+            } else if (xpos < BOXSIZE * 4) {
+                currentcolor = CYAN;
+                tft.drawRect(BOXSIZE * 3, 0, BOXSIZE, BOXSIZE, WHITE);
+            } else if (xpos < BOXSIZE * 5) {
+                currentcolor = BLUE;
+                tft.drawRect(BOXSIZE * 4, 0, BOXSIZE, BOXSIZE, WHITE);
+            } else if (xpos < BOXSIZE * 6) {
+                currentcolor = MAGENTA;
+                tft.drawRect(BOXSIZE * 5, 0, BOXSIZE, BOXSIZE, WHITE);
+            }
+
+            if (oldcolor != currentcolor) { //rub out the previous white border
+                if (oldcolor == RED) tft.fillRect(0, 0, BOXSIZE, BOXSIZE, RED);
+                if (oldcolor == YELLOW) tft.fillRect(BOXSIZE, 0, BOXSIZE, BOXSIZE, YELLOW);
+                if (oldcolor == GREEN) tft.fillRect(BOXSIZE * 2, 0, BOXSIZE, BOXSIZE, GREEN);
+                if (oldcolor == CYAN) tft.fillRect(BOXSIZE * 3, 0, BOXSIZE, BOXSIZE, CYAN);
+                if (oldcolor == BLUE) tft.fillRect(BOXSIZE * 4, 0, BOXSIZE, BOXSIZE, BLUE);
+                if (oldcolor == MAGENTA) tft.fillRect(BOXSIZE * 5, 0, BOXSIZE, BOXSIZE, MAGENTA);
+            }
+        }
+        // are we in drawing area ?
+        if (((ypos - PENRADIUS) > BOXSIZE) && ((ypos + PENRADIUS) < tft.height())) {
+            tft.fillCircle(xpos, ypos, PENRADIUS, currentcolor);
+        }
+        // are we in erase area ?
+        // Plain Touch panels use bottom 10 pixels e.g. > h - 10
+        // Touch panels with icon area e.g. > h - 0
+        if (ypos > tft.height() - 10) {
+            // press the bottom of the screen to erase
+            tft.fillRect(0, BOXSIZE, tft.width(), tft.height() - BOXSIZE, BLACK);
+        }
+    }
+}
+*/
+/*
+void show_Serial(void)
+{
+    Serial.println(F("Most Touch Screens use pins 6, 7, A1, A2"));
+    Serial.println(F("But they can be in ANY order"));
+    Serial.println(F("e.g. right to left or bottom to top"));
+    Serial.println(F("or wrong direction"));
+    Serial.println(F("Edit name and calibration statements\n"));
+    Serial.println(name);
+    Serial.print(F("ID=0x"));
+    Serial.println(ID, HEX);
+    Serial.println("Screen is " + String(tft.width()) + "x" + String(tft.height()));
+    Serial.println("Calibration is: ");
+    Serial.println("LEFT = " + String(TS_LEFT) + " RT  = " + String(TS_RT));
+    Serial.println("TOP  = " + String(TS_TOP)  + " BOT = " + String(TS_BOT));
+    Serial.println("Wiring is always PORTRAIT");
+    Serial.println("YP=" + String(YP)  + " XM=" + String(XM));
+    Serial.println("YM=" + String(YM)  + " XP=" + String(XP));
+}
+*/
+/*
+void show_tft(void)
+{
+    tft.setCursor(0, 0);
+    tft.setTextSize(1);
+    tft.print(F("ID=0x"));
+    tft.println(ID, HEX);
+    tft.println("Screen is " + String(tft.width()) + "x" + String(tft.height()));
+    tft.println("");
+    tft.setTextSize(2);
+    tft.println(name);
+    tft.setTextSize(1);
+    tft.println("PORTRAIT Values:");
+    tft.println("LEFT = " + String(TS_LEFT) + " RT  = " + String(TS_RT));
+    tft.println("TOP  = " + String(TS_TOP)  + " BOT = " + String(TS_BOT));
+    tft.println("\nWiring is: ");
+    tft.println("YP=" + String(YP)  + " XM=" + String(XM));
+    tft.println("YM=" + String(YM)  + " XP=" + String(XP));
+    tft.setTextSize(2);
+    tft.setTextColor(RED);
+    tft.setCursor((tft.width() - 48) / 2, (tft.height() * 2) / 4);
+    tft.print("EXIT");
+    tft.setTextColor(YELLOW, BLACK);
+    tft.setCursor(0, (tft.height() * 6) / 8);
+    tft.print("Touch screen for loc");
+    while (1) {
+        tp = ts.getPoint();
+        pinMode(XM, OUTPUT);
+        pinMode(YP, OUTPUT);
+        if (tp.z < MINPRESSURE || tp.z > MAXPRESSURE) continue;
+        if (tp.x > 450 && tp.x < 570  && tp.y > 450 && tp.y < 570) break;
+        tft.setCursor(0, (tft.height() * 3) / 4);
+        tft.print("tp.x=" + String(tp.x) + " tp.y=" + String(tp.y) + "   ");
+    }
+}
+*/
+/*
 void setup(void)
 {
-    Serial.begin(9600);
-    uint16_t ID = tft.readID();
-    Serial.print("TFT ID = 0x");
-    Serial.println(ID, HEX);
-    Serial.println("Calibrate for your Touch Panel");
-    if (ID == 0xD3D3) ID = 0x9486; // write-only shield
+    uint16_t tmp;
+
+    tft.reset();
+    ID = tft.readID();
     tft.begin(ID);
-    tft.setRotation(2);            //PORTRAIT
+    Serial.begin(9600);
+    show_Serial();
+    tft.setRotation(Orientation);
     tft.fillScreen(BLACK);
-    on_btn.initButton(&tft,  60, 200, 100, 40, WHITE, CYAN, BLACK, "ON", 3);
-    off_btn.initButton(&tft, 180, 200, 100, 40, WHITE, CYAN, BLACK, "OFF", 3);
-    
-    b1_btn.initButton(&tft,  60, 250, 100, 40, RED, YELLOW, BLACK, "B1", 2);
-    b2_btn.initButton(&tft, 180, 250, 100, 40, RED, YELLOW, BLACK, "B2", 2);
+    show_tft();
 
-    b3_btn.initButton(&tft,  60, 300, 100, 40, GREEN, WHITE, BLACK, "B3", 2);
-    b4_btn.initButton(&tft, 180, 300, 100, 40, GREEN, WHITE, BLACK, "B4", 2);
+    BOXSIZE = tft.width() / 6;
+    tft.fillScreen(BLACK);
 
-    b5_btn.initButton(&tft,  40, 30, 50, 40, WHITE, BLUE, BLACK, "-", 4);
-    b6_btn.initButton(&tft, 200, 30, 50, 40, WHITE, RED, BLACK, "+", 4);
+    tft.fillRect(0, 0, BOXSIZE, BOXSIZE, RED);
+    tft.fillRect(BOXSIZE, 0, BOXSIZE, BOXSIZE, YELLOW);
+    tft.fillRect(BOXSIZE * 2, 0, BOXSIZE, BOXSIZE, GREEN);
+    tft.fillRect(BOXSIZE * 3, 0, BOXSIZE, BOXSIZE, CYAN);
+    tft.fillRect(BOXSIZE * 4, 0, BOXSIZE, BOXSIZE, BLUE);
+    tft.fillRect(BOXSIZE * 5, 0, BOXSIZE, BOXSIZE, MAGENTA);
 
-    on_btn.drawButton(false);
-    off_btn.drawButton(false);
-    b1_btn.drawButton(false);
-    b2_btn.drawButton(false);
-    b3_btn.drawButton(false);
-    b4_btn.drawButton(false);
-    b5_btn.drawButton(false);
-    b6_btn.drawButton(false);
-    tft.fillRect(40, 80, 160, 80, RED);
+    tft.drawRect(0, 0, BOXSIZE, BOXSIZE, WHITE);
+    currentcolor = RED;
+    delay(1000);
 }
-
-/* two buttons are quite simple
- */
-void loop(void)
-{
-    bool down = Touch_getXY();
-    on_btn.press(down && on_btn.contains(pixel_x, pixel_y));
-    off_btn.press(down && off_btn.contains(pixel_x, pixel_y));
-    b1_btn.press(down && b1_btn.contains(pixel_x, pixel_y));
-    b2_btn.press(down && b2_btn.contains(pixel_x, pixel_y));
-    b3_btn.press(down && b3_btn.contains(pixel_x, pixel_y));
-    b4_btn.press(down && b4_btn.contains(pixel_x, pixel_y));
-    b5_btn.press(down && b5_btn.contains(pixel_x, pixel_y));
-    b6_btn.press(down && b6_btn.contains(pixel_x, pixel_y));
-    if (on_btn.justReleased())
-        on_btn.drawButton();
-    if (off_btn.justReleased())
-        off_btn.drawButton();
-    if (b1_btn.justReleased())
-        b1_btn.drawButton();
-    if (b2_btn.justReleased())
-        b2_btn.drawButton();
-    if (b3_btn.justReleased())
-        b3_btn.drawButton();
-    if (b4_btn.justReleased())
-        b4_btn.drawButton();
-    if (b5_btn.justReleased())
-        b5_btn.drawButton();
-    if (b6_btn.justReleased())
-        b6_btn.drawButton();
-
-
-    if (on_btn.justPressed()) {
-        on_btn.drawButton(true);
-        tft.fillRect(40, 80, 160, 80, GREEN);
-        c+=1;
-        tft.setTextColor(BLACK);
-        tft.setCursor(50,90);
-        tft.print("ON");tft.print("   ");tft.print(c);
-    }
-    if (off_btn.justPressed()) {
-        off_btn.drawButton(true);
-        tft.fillRect(40, 80, 160, 80, RED);
-        c+=1;
-        tft.setTextColor(BLACK);
-        tft.setCursor(50,90);
-        tft.print("OFF");tft.print("  ");tft.print(c);
-    }
-    if (b1_btn.justPressed()) {
-        b1_btn.drawButton(true);
-        tft.fillRect(40, 80, 160, 80, YELLOW);
-        c+=1;
-        tft.setTextColor(BLACK);
-        tft.setCursor(50,90);
-        tft.print("OFF");tft.print("  ");tft.print(c);
-    }
-    if (b2_btn.justPressed()) {
-        b2_btn.drawButton(true);
-        tft.fillRect(40, 80, 160, 80, WHITE);
-        c+=1;
-        tft.setTextColor(BLACK);
-        tft.setCursor(50,90);
-        tft.print("OFF");tft.print("  ");tft.print(c);
-    }
-    if (b3_btn.justPressed()) {
-        b3_btn.drawButton(true);
-        tft.fillRect(40, 80, 160, 80, YELLOW);
-        c+=1;
-        tft.setTextColor(BLACK);
-        tft.setCursor(50,90);
-        tft.print("OFF");tft.print("  ");tft.print(c);
-    }
-    if (b4_btn.justPressed()) {
-        b4_btn.drawButton(true);
-        tft.fillRect(40, 80, 160, 80, WHITE);
-        c+=1;
-        tft.setTextColor(BLACK);
-        tft.setCursor(50,90);
-        tft.print("OFF");tft.print("  ");tft.print(c);
-    }
-    if (b5_btn.justPressed()) {
-        b5_btn.drawButton(true);
-        tft.fillRect(80, 00, 80, 40, BLACK);
-        if (test>0) {test-=1;}
-        tft.setTextColor(BLUE);
-        tft.setCursor(90,10);
-        tft.print(test);
-    }
-    if (b6_btn.justPressed()) {
-        b6_btn.drawButton(true);
-        tft.fillRect(80, 0, 80, 40, BLACK);
-        test+=1;
-        tft.setTextColor(RED);
-        tft.setCursor(90,10);
-        tft.print(test);
-    }
-
-
-    delay(100);
-}
-#endif
-
-
+*/
